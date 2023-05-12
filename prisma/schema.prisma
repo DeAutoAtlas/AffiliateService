@@ -1,0 +1,48 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ActionType {
+  CLICK
+  LEAD
+}
+
+model Publisher {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  campaigns Campaign[]
+}
+
+model Campaign {
+  id              String           @id @default(cuid())
+  affiliateCode   String
+  publisher       Publisher        @relation(fields: [publisherId], references: [id])
+  publisherId     String
+  campaignActions CampaignAction[]
+}
+
+model CampaignAction {
+  id         String     @id @default(cuid())
+  campaign   Campaign   @relation(fields: [campaignId], references: [id])
+  campaignId String
+  firedAt    DateTime   @default(now())
+  action     ActionType
+}
+
+model Platform {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  baseUrl   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
