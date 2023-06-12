@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { ActionType, Campaign, CampaignAction } from '@prisma/client';
 import { PrismaService } from 'src/prisma.service';
-import { PaginationArgs } from 'src/types/types';
+import {
+  CampaignStats,
+  PaginationArgs,
+  PublisherWithCampaignsAndActions,
+  PublisherWithStats,
+  StatType,
+} from 'src/types/types';
+import { InvitePublisherOpts } from './dto/request/InvitePublisher.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export default class PublisherService {
@@ -39,33 +47,16 @@ export default class PublisherService {
     });
   }
 
-  async getPublisher(id: string) {
+  async getPublisher(
+    id: string,
+    statOptions: StatOptions = {
+      year: new Date().getFullYear(),
+      statType: 'clicks',
+    },
+  ): Promise<PublisherWithStats> {
     const publisher = await this.prisma.publisher.findUnique({
       where: {
         id,
-      },
-    });
-
-    return publisher;
-  }
-
-  /**
-   *
-   * @param publisherId
-   * @param opts
-   * @returns All stats for a publisher
-   */
-  async getPublisherStats(
-    publisherId: string,
-    opts: GetPublisherStatsOpts,
-  ): Promise<{
-    clicksAmount: number;
-    leadsAmount: number;
-    stats: { type: string; dataset: number[] }[];
-  }> {
-    const publisher = await this.prisma.publisher.findUnique({
-      where: {
-        id: publisherId,
       },
       include: {
         campaigns: {
@@ -76,13 +67,46 @@ export default class PublisherService {
       },
     });
 
+    const publisherStats = await this.getPublisherStats(publisher);
+
+    return { ...publisher, ...publisherStats };
+  }
+
+  /**
+   *
+   * @param publisherId
+   * @param opts
+   * @returns All stats for a publisher
+   */
+  async getPublisherStats(
+    publisher: string | PublisherWithCampaignsAndActions,
+    opts?: StatOptions,
+  ): Promise<CampaignStats> {
+    let fullPublisher: PublisherWithCampaignsAndActions;
+    if (typeof publisher === 'string') {
+      fullPublisher = await this.prisma.publisher.findUnique({
+        where: {
+          id: publisher,
+        },
+        include: {
+          campaigns: {
+            include: {
+              campaignActions: true,
+            },
+          },
+        },
+      });
+    } else {
+      fullPublisher = publisher;
+    }
+
     const clicksAmount = this.getAllStatsFromCampaigns(
       'CLICK',
-      publisher.campaigns,
+      fullPublisher.campaigns,
     );
     const leadsAmount = this.getAllStatsFromCampaigns(
       'LEAD',
-      publisher.campaigns,
+      fullPublisher.campaigns,
     );
 
     /**
@@ -93,15 +117,48 @@ export default class PublisherService {
       leadsAmount,
       stats: [
         {
-          type: 'clicks',
-          dataset: this.getMonthlyStats('CLICK', publisher.campaigns),
+          type: 'CLICK',
+          dataset: this.getMonthlyStats('CLICK', fullPublisher.campaigns),
         },
         {
-          type: 'leads',
-          dataset: this.getMonthlyStats('LEAD', publisher.campaigns),
+          type: 'LEAD',
+          dataset: this.getMonthlyStats('LEAD', fullPublisher.campaigns),
         },
       ],
     };
+  }
+
+  async getById(userId: string) {
+    return this.prisma.publisher.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+  }
+
+  async getIfRefreshTokenMatches(userId: string, refreshToken: string) {
+    const user = await this.getById(userId);
+    const match = await bcrypt.compare(refreshToken, user.hashedRefreshToken);
+
+    if (match) {
+      return user;
+    }
+
+    return null;
+  }
+
+  async invitePublisher(opts: InvitePublisherOpts) {
+    await this.prisma.publisher.create({
+      data: {
+        email: opts.email,
+        firstName: opts.firstName,
+        lastName: opts.lastName,
+        phoneNumber: opts.phoneNumber,
+        kvkNumber: opts.kvkNumber,
+      },
+    });
+
+    // TODO: Send email to publisher
   }
 
   getMonthlyStats(
@@ -147,6 +204,11 @@ export default class PublisherService {
     return amount;
   }
 }
+
+export type StatOptions = {
+  year: number;
+  statType: StatType;
+};
 
 export type GetPublisherOpts = {
   pagination: PaginationArgs;

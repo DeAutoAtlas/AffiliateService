@@ -16,11 +16,27 @@ enum ActionType {
 }
 
 model Publisher {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  campaigns Campaign[]
+  id                 String            @id @default(cuid())
+  email              String            @unique
+  firstName          String
+  lastName           String
+  kvkNumber          String
+  phoneNumber        String
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  campaigns          Campaign[]
+  TwoFactorTokens    TwoFactorTokens[]
+  hashedRefreshToken String?
+}
+
+model TwoFactorTokens {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  user      Publisher @relation(fields: [userId], references: [id])
+  userId    String
+  expiresAt DateTime  @default(now())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Campaign {

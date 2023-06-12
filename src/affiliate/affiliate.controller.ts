@@ -6,19 +6,19 @@ import { Request, Response } from 'express';
 export class AffiliateController {
   constructor(private affiliateService: AffiliateService) {}
 
-  @Post('generate-cookie/:affiliateId')
+  @Post('generate-cookie/:campaignId')
   genCookie(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
-    @Param('affiliateId') affiliateId: string,
+    @Param('campaignId') campaignId: string,
   ) {
     console.log('request', request.ip);
 
-    response.cookie('affiliateId', affiliateId, {
+    response.cookie('affiliateId', campaignId, {
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24 * 30,
       path: '/',
     });
-    return 'test';
+    return;
   }
 }
