@@ -15,6 +15,13 @@ enum ActionType {
   LEAD
 }
 
+enum InvoiceStatus {
+  UPCOMING
+  PAID
+  CANCELED
+  OPEN
+}
+
 model Publisher {
   id                 String            @id @default(cuid())
   email              String            @unique
@@ -27,12 +34,13 @@ model Publisher {
   campaigns          Campaign[]
   TwoFactorTokens    TwoFactorTokens[]
   hashedRefreshToken String?
+  invoices           Invoice[]
 }
 
 model TwoFactorTokens {
   id        String    @id @default(cuid())
   token     String    @unique
-  user      Publisher @relation(fields: [userId], references: [id])
+  user      Publisher @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   expiresAt DateTime  @default(now())
   createdAt DateTime  @default(now())
@@ -40,16 +48,17 @@ model TwoFactorTokens {
 }
 
 model Campaign {
-  id              String           @id @default(cuid())
-  affiliateCode   String
-  publisher       Publisher        @relation(fields: [publisherId], references: [id])
-  publisherId     String
-  campaignActions CampaignAction[]
+  id               String           @id @default(cuid())
+  affiliateCode    String
+  publisher        Publisher        @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  publisherId      String
+  campaignActions  CampaignAction[]
+  invoiceLineItems InvoiceLine[]
 }
 
 model CampaignAction {
   id         String     @id @default(cuid())
-  campaign   Campaign   @relation(fields: [campaignId], references: [id])
+  campaign   Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   campaignId String
   firedAt    DateTime   @default(now())
   action     ActionType
@@ -61,4 +70,26 @@ model Platform {
   baseUrl   String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Invoice {
+  id           String        @id @default(cuid())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  invoiceLines InvoiceLine[]
+  publisher    Publisher     @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  publisherId  String
+  status       InvoiceStatus @default(UPCOMING)
+}
+
+model InvoiceLine {
+  id         String   @id @default(cuid())
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId  String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  campaignId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  amount     Int // amount of leads
+  total      Int // total amount of money
 }

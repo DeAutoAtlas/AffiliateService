@@ -18,13 +18,12 @@ describe('PublisherService', () => {
     publisherService = moduleRef.get<PublisherService>(PublisherService);
     prismaService = moduleRef.get<PrismaService>(PrismaService);
     publisherSeeder = new PublisherSeeder(prismaService);
-  });
 
-  beforeEach(async () => {
+    await publisherSeeder.clear();
     await publisherSeeder.seed();
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await publisherSeeder.clear();
   });
 
@@ -83,6 +82,10 @@ describe('PublisherService', () => {
           },
         },
         data: {
+          firstName: 'publisher1',
+          lastName: 'publisher1',
+          kvkNumber: '12345678',
+          phoneNumber: '0612345678',
           email: 'publisher1@mail.com',
           campaigns: {
             create: {
@@ -142,6 +145,13 @@ describe('PublisherService', () => {
       expect(leadStats.dataset.length).toBe(12);
       expect(clickStats.dataset).toEqual([1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
       expect(leadStats.dataset).toEqual([2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+
+      // cleanup
+      await prismaService.publisher.delete({
+        where: {
+          id: res.id,
+        },
+      });
     });
     it.todo('should return correct stats based on years');
   });

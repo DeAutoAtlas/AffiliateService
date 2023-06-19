@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { SALT_ROUNDS } from 'src/constants';
 
@@ -63,18 +63,22 @@ export class TwoFactorService {
       return false;
     }
 
+    console.log('User', user);
+
     if (user.TwoFactorTokens.length === 0) {
       return false;
     }
 
     for (let i = 0; i < user.TwoFactorTokens.length; i++) {
       const TwoFactorToken = user.TwoFactorTokens[i];
-      if (TwoFactorToken.expiresAt < new Date()) {
+      console.log(user.TwoFactorTokens[i]);
+      if (TwoFactorToken.expiresAt > new Date()) {
         try {
           const isValidToken = await bcrypt.compare(
             token,
             TwoFactorToken.token,
           );
+          console.log('Is valid token', isValidToken);
           if (isValidToken) {
             return true;
           }
@@ -96,6 +100,7 @@ export class TwoFactorService {
   }
 
   generateSecretKey(length: number): string {
+    console.log(crypto);
     return crypto.randomBytes(length).toString('hex');
   }
 }

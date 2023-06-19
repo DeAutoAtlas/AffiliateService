@@ -106,6 +106,7 @@ export class PublisherSeeder implements Seeder {
   }
 
   async clear() {
+    await this.prismaService.twoFactorTokens.deleteMany();
     await this.prismaService.campaignAction.deleteMany();
     await this.prismaService.campaign.deleteMany();
     await this.prismaService.platform.deleteMany();

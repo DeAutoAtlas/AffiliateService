@@ -6,5 +6,6 @@
   "testRegex": "service.spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "setupFiles": ["<rootDir>/test/setEnvVars.js"]
 }

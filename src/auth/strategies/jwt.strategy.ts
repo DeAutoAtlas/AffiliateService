@@ -20,10 +20,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: TokenPayload) {
-    if (payload.role === 'publisher') {
-      return await this.publisherService.getById(payload.sub);
-    }
-
     return payload;
   }
 }

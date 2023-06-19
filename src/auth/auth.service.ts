@@ -1,24 +1,25 @@
 import { HttpException, Injectable } from '@nestjs/common';
-import { TwoFactorService } from './two-factor.service';
-import { Prisma, PrismaClient } from '@prisma/client';
-import { UserNotFoundException } from './exceptions/user-not-found.exception';
-import { InvalidTwoFactorTokenException } from './exceptions/invalid-token.exception';
-import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { UserRole } from 'src/types/types';
+import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { SALT_ROUNDS } from 'src/constants';
+import { PrismaService } from 'src/prisma.service';
+import { UserRole } from 'src/types/types';
+import { InvalidTwoFactorTokenException } from './exceptions/invalid-token.exception';
+import { UserNotFoundException } from './exceptions/user-not-found.exception';
+import { TwoFactorService } from './two-factor.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private twoFactorService: TwoFactorService,
-    private prisma: PrismaClient,
+    private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
 
   async setTwoFactorSecret(email: string) {
+    console.log('Finding publisher with email', email);
     const user = await this.prisma.publisher.findUnique({
       where: {
         email,

@@ -1,23 +1,20 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import PublisherService from './publisher.service';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { AuthWithRole } from 'src/helpers/decorators';
 import { InvitePublisherDto } from './dto/request/InvitePublisher.dto';
-import {
-  IsEnum,
-  IsIn,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  Max,
-  Min,
-} from 'class-validator';
-import { StatType, UnionToArray } from 'src/types/types';
+import { GetPublisherByIdQuery } from './dto/request/query.dto';
+import PublisherService from './publisher.service';
 
 @Controller('publisher')
 export default class PublisherController {
   constructor(private publisherService: PublisherService) {}
 
   @Get()
-  async getPublisher() {
+  @AuthWithRole('admin', 'publisher')
+  async getPublisher(@Req() req) {
+    if (req.user.role === 'publisher') {
+      return await this.publisherService.getPublisher(req.user.sub);
+    }
+
     return {
       data: await this.publisherService.getPublishers({
         pagination: {
@@ -30,7 +27,14 @@ export default class PublisherController {
     };
   }
 
+  @Get('/self')
+  @AuthWithRole('publisher')
+  async getSelfPublisher(@Req() req) {
+    return await this.publisherService.getPublisher(req.user.sub);
+  }
+
   @Get('/:id')
+  @AuthWithRole('admin')
   async getPublisherById(
     @Param('id') id: string,
     @Query() query: GetPublisherByIdQuery,
@@ -41,18 +45,8 @@ export default class PublisherController {
   }
 
   @Post()
+  @AuthWithRole('admin')
   invitePublisher(@Body() body: InvitePublisherDto) {
     return this.publisherService.invitePublisher(body);
   }
-}
-
-class GetPublisherByIdQuery {
-  @IsOptional()
-  @IsNumber()
-  @Min(1900)
-  @Max(new Date().getFullYear())
-  year: number;
-  @IsOptional()
-  @IsIn(['clicks', 'leads', 'ratio'] as UnionToArray<StatType>)
-  statType: StatType;
 }

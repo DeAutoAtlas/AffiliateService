@@ -4,6 +4,7 @@ import {
   CampaignAction,
   Publisher,
 } from '@prisma/client';
+import { TokenPayload } from 'src/auth/auth.service';
 
 export type PaginationArgs = {
   page: number;
@@ -25,13 +26,15 @@ export type CampaignStats = {
   stats: Data<ActionType, number>[];
 };
 
-export type PublisherWithStats = Publisher & CampaignStats;
+export type ReturnablePublisher = Omit<Publisher, 'hashedRefreshToken'>;
+
+export type PublisherWithStats = ReturnablePublisher & CampaignStats;
 
 export type AffiliateCampaign = Campaign & {
   campaignActions: CampaignAction[];
 };
 
-export type PublisherWithCampaignsAndActions = Publisher & {
+export type PublisherWithCampaignsAndActions = ReturnablePublisher & {
   campaigns: AffiliateCampaign[];
 };
 
@@ -61,5 +64,5 @@ export type UnionToArray<T, A extends unknown[] = []> = IsUnion<T> extends true
   : [T, ...A];
 
 export interface RequestWithUser extends Request {
-  user: UserEntity;
+  user: TokenPayload;
 }

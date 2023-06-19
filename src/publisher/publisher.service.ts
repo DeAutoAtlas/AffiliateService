@@ -69,6 +69,8 @@ export default class PublisherService {
 
     const publisherStats = await this.getPublisherStats(publisher);
 
+    delete publisher.hashedRefreshToken;
+
     return { ...publisher, ...publisherStats };
   }
 
@@ -159,6 +161,11 @@ export default class PublisherService {
     });
 
     // TODO: Send email to publisher
+    console.log(
+      'Sending email to publisher',
+      opts.email,
+      ' that he is invited',
+    );
   }
 
   getMonthlyStats(

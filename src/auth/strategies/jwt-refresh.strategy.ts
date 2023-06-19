@@ -19,12 +19,12 @@ export class JwtRefreshTokenStrategy extends PassportStrategy(
       secretOrKey: configService.get('auth.jwtRefreshSecret'),
       ignoreExpiration: false,
       passReqToCallback: true,
-      jwtFromRequest: ExtractJwt.fromBodyField('refresh_token'),
+      jwtFromRequest: ExtractJwt.fromBodyField('refreshToken'),
     });
   }
 
   async validate(request: Request, payload: TokenPayload) {
-    const refreshToken: string = request.body.refresh_token;
+    const refreshToken: string = request.body.refreshToken;
     return await this.publisherService.getIfRefreshTokenMatches(
       payload.sub,
       refreshToken,
