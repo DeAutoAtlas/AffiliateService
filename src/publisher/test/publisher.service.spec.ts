@@ -4,6 +4,7 @@ import { PrismaService } from 'src/prisma.service';
 import { PublisherSeeder } from './seed';
 import { Seeder } from 'src/types/types';
 import { ActionType } from '@prisma/client';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 describe('PublisherService', () => {
   let publisherService: PublisherService;

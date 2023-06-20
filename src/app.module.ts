@@ -15,7 +15,7 @@ import invoiceConfig from 'config/invoice.config';
     AuthModule,
     PublisherModule,
     ConfigModule.forRoot({
-      envFilePath: ['.env.development', '.env.production', '.env'],
+      envFilePath: '.env',
       load: [authConfig, invoiceConfig],
       isGlobal: true,
     }),
