@@ -151,12 +151,20 @@ export default class PublisherService {
 
   async invitePublisher(opts: InvitePublisherOpts) {
     await this.prisma.publisher.create({
+      include: {
+        invoices: true,
+      },
       data: {
         email: opts.email,
         firstName: opts.firstName,
         lastName: opts.lastName,
         phoneNumber: opts.phoneNumber,
         kvkNumber: opts.kvkNumber,
+        invoices: {
+          create: {
+            status: 'UPCOMING',
+          },
+        },
       },
     });
 
