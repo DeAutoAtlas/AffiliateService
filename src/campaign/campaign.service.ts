@@ -3,10 +3,14 @@ import * as crypto from 'crypto';
 import { PrismaService } from 'src/prisma.service';
 import { CreateCampaignRequestDto } from './dto/request.dto';
 import { ActionType } from '@prisma/client';
+import { InvoiceService } from 'src/invoice/invoice.service';
 
 @Injectable()
 export class CampaignService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private invoiceService: InvoiceService,
+  ) {}
 
   /**
    * Creates a campaign for a publisher
@@ -41,6 +45,9 @@ export class CampaignService {
   async createCampaignAction(action: ActionType, affiliateId: string) {
     console.log('Finding campaign with affiliate code', affiliateId);
     const campaign = await this.prisma.campaign.findFirst({
+      include: {
+        publisher: true,
+      },
       where: {
         affiliateCode: affiliateId,
       },
@@ -59,6 +66,24 @@ export class CampaignService {
         firedAt: new Date(),
       },
     });
+
+    if (action === ActionType.LEAD) {
+      const upcomingInvoice = await this.invoiceService.getUpcomingInvoice(
+        campaign.publisherId,
+      );
+      const campaignLine = upcomingInvoice.invoiceLines.find(
+        (line) => line.campaignId === campaign.id,
+      );
+
+      if (campaignLine) {
+        await this.invoiceService.increaseInvoiceLineAmount(campaignLine.id, 1);
+      } else {
+        await this.invoiceService.addLineItem(upcomingInvoice.id, {
+          amount: 1,
+          campaignId: campaign.id,
+        });
+      }
+    }
 
     return;
   }

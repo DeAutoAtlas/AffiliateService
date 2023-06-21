@@ -32,12 +32,15 @@ export class InvoiceService {
     const minimumPayoutAmount = await this.configService.get<number>(
       'invoice.minimumPayout',
     );
+    const pricePerLead = await this.configService.get<number>(
+      'invoice.pricePerLead',
+    );
 
     for (let i = 0; i < upcomingInvoices.length; i++) {
       const upcomingInvoice = upcomingInvoices[i];
 
       const totalPrice = upcomingInvoice.invoiceLines.reduce((acc, line) => {
-        return acc + line.total;
+        return acc + line.amount * pricePerLead;
       }, 0);
 
       if (totalPrice < minimumPayoutAmount) {
@@ -87,6 +90,39 @@ export class InvoiceService {
     });
   }
 
+  async getUpcomingInvoice(publisherId: string) {
+    return await this.prismaService.invoice.findFirst({
+      include: {
+        invoiceLines: true,
+      },
+      where: {
+        publisherId: publisherId,
+        status: InvoiceStatus.UPCOMING,
+      },
+    });
+  }
+
+  async increaseInvoiceLineAmount(invoiceLineId: string, amount: number) {
+    const invoiceLine = await this.prismaService.invoiceLine.findUnique({
+      where: {
+        id: invoiceLineId,
+      },
+    });
+
+    if (!invoiceLine) {
+      throw new Error('Invoice line not found');
+    }
+
+    return await this.prismaService.invoiceLine.update({
+      where: {
+        id: invoiceLineId,
+      },
+      data: {
+        amount: invoiceLine.amount + amount,
+      },
+    });
+  }
+
   /**
    * Adds an invoice line item to an invoice.
    * Line items can only be added to upcoming invoices.
@@ -112,7 +148,6 @@ export class InvoiceService {
     return await this.prismaService.invoiceLine.create({
       data: {
         amount: data.amount,
-        total: data.total,
         campaignId: data.campaignId,
         invoiceId: invoiceId,
       },
@@ -128,7 +163,6 @@ type CreateInvoiceOpts = {
 type LineItemData = {
   campaignId: string;
   amount: number;
-  total: number;
 };
 
 type SearchInvoiceOpts = {
