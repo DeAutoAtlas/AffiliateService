@@ -18,13 +18,10 @@ describe('PublisherService', () => {
     publisherService = moduleRef.get<PublisherService>(PublisherService);
     prismaService = moduleRef.get<PrismaService>(PrismaService);
     publisherSeeder = new PublisherSeeder(prismaService);
-  });
-
-  beforeEach(async () => {
     await publisherSeeder.seed();
-  });
+  }, 40000);
 
-  afterEach(async () => {
+  afterAll(async () => {
     await publisherSeeder.clear();
   });
 
