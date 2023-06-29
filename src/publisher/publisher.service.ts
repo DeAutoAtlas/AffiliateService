@@ -1,15 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ActionType, Campaign, CampaignAction } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma.service';
 import {
   CampaignStats,
   PaginationArgs,
   PublisherWithCampaignsAndActions,
   PublisherWithStats,
-  StatType,
 } from 'src/types/types';
 import { InvitePublisherOpts } from './dto/request/InvitePublisher.dto';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export default class PublisherService {
@@ -50,8 +49,7 @@ export default class PublisherService {
   async getPublisher(
     id: string,
     statOptions: StatOptions = {
-      year: new Date().getFullYear(),
-      statType: 'clicks',
+      year: null,
     },
   ): Promise<PublisherWithStats> {
     const publisher = await this.prisma.publisher.findUnique({
@@ -67,7 +65,7 @@ export default class PublisherService {
       },
     });
 
-    const publisherStats = await this.getPublisherStats(publisher);
+    const publisherStats = await this.getPublisherStats(publisher, statOptions);
 
     delete publisher.hashedRefreshToken;
 
@@ -105,10 +103,16 @@ export default class PublisherService {
     const clicksAmount = this.getAllStatsFromCampaigns(
       'CLICK',
       fullPublisher.campaigns,
+      {
+        year: opts.year,
+      },
     );
     const leadsAmount = this.getAllStatsFromCampaigns(
       'LEAD',
       fullPublisher.campaigns,
+      {
+        year: opts.year,
+      },
     );
 
     /**
@@ -120,11 +124,19 @@ export default class PublisherService {
       stats: [
         {
           type: 'CLICK',
-          dataset: this.getMonthlyStats('CLICK', fullPublisher.campaigns),
+          dataset: this.getMonthlyStats(
+            'CLICK',
+            fullPublisher.campaigns,
+            opts.year,
+          ),
         },
         {
           type: 'LEAD',
-          dataset: this.getMonthlyStats('LEAD', fullPublisher.campaigns),
+          dataset: this.getMonthlyStats(
+            'LEAD',
+            fullPublisher.campaigns,
+            opts.year,
+          ),
         },
       ],
     };
@@ -181,14 +193,14 @@ export default class PublisherService {
     campaigns: (Campaign & {
       campaignActions: CampaignAction[];
     })[],
+    year?: number,
   ) {
     const stats: number[] = [];
     for (let month = 1; month <= 12; month++) {
-      const monthClicks = this.getAllStatsFromCampaigns(
-        actionType,
-        campaigns,
+      const monthClicks = this.getAllStatsFromCampaigns(actionType, campaigns, {
+        year,
         month,
-      );
+      });
       stats.push(monthClicks);
     }
     return stats;
@@ -197,32 +209,50 @@ export default class PublisherService {
   getAllStatsFromCampaigns(
     actionType: ActionType,
     campaigns: (Campaign & { campaignActions: CampaignAction[] })[],
-    month: number = undefined,
+    date?: {
+      year?: number;
+      month?: number;
+    },
   ) {
     let amount = 0;
 
     for (const campaign of campaigns) {
-      if (month) {
-        amount += campaign.campaignActions.filter(
-          (action) =>
-            action.action === actionType &&
-            action.firedAt.getMonth() === month - 1,
-        ).length;
-        continue;
-      }
-
       amount += campaign.campaignActions.filter(
-        (action) => action.action === actionType,
+        this.actionFilter(actionType, date),
       ).length;
     }
 
     return amount;
   }
+
+  actionFilter(
+    actionType: ActionType,
+    date?: {
+      year?: number;
+      month?: number;
+    },
+  ) {
+    if (!date || (!date.month && !date.year))
+      return (action: CampaignAction) => action.action === actionType;
+    const monthCheck = (action: CampaignAction) =>
+      action.firedAt.getMonth() === date.month - 1;
+    const yearCheck = (action: CampaignAction) =>
+      action.firedAt.getFullYear() === date.year;
+
+    if (date.month && date.year) {
+      return (action: CampaignAction) =>
+        action.action === actionType && monthCheck(action) && yearCheck(action);
+    } else if (date.year) {
+      return (action: CampaignAction) =>
+        action.action === actionType && yearCheck(action);
+    }
+    return (action: CampaignAction) =>
+      action.action === actionType && monthCheck(action);
+  }
 }
 
 export type StatOptions = {
   year: number;
-  statType: StatType;
 };
 
 export type GetPublisherOpts = {

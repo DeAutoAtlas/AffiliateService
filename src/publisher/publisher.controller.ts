@@ -10,20 +10,27 @@ export default class PublisherController {
 
   @Get()
   @AuthWithRole('admin', 'publisher')
-  async getPublisher(@Req() req) {
+  async getPublisher(
+    @Req() req,
+    @Query('page') page: number,
+    @Query('perPage') perPage: number,
+  ) {
     if (req.user.role === 'publisher') {
       return await this.publisherService.getPublisher(req.user.sub);
     }
 
+    page = page || 1;
+    perPage = perPage || 10;
+
     return {
       data: await this.publisherService.getPublishers({
         pagination: {
-          page: 1,
-          perPage: 10,
+          page,
+          perPage,
         },
       }),
-      page: 1,
-      perPage: 10,
+      page,
+      perPage,
     };
   }
 
@@ -39,9 +46,9 @@ export default class PublisherController {
     @Param('id') id: string,
     @Query() query: GetPublisherByIdQuery,
   ) {
-    const { year = new Date().getFullYear(), statType = 'clicks' } = query;
-
-    return await this.publisherService.getPublisher(id);
+    return await this.publisherService.getPublisher(id, {
+      year: query.year,
+    });
   }
 
   @Post()

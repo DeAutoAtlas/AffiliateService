@@ -1,10 +1,9 @@
 import { Test } from '@nestjs/testing';
-import PublisherService from '../publisher.service';
-import { PrismaService } from 'src/prisma.service';
-import { PublisherSeeder } from './seed';
-import { Seeder } from 'src/types/types';
 import { ActionType } from '@prisma/client';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { PrismaService } from 'src/prisma.service';
+import { Seeder } from 'src/types/types';
+import PublisherService from '../publisher.service';
+import { PublisherSeeder } from './seed';
 
 describe('PublisherService', () => {
   let publisherService: PublisherService;
@@ -19,12 +18,13 @@ describe('PublisherService', () => {
     publisherService = moduleRef.get<PublisherService>(PublisherService);
     prismaService = moduleRef.get<PrismaService>(PrismaService);
     publisherSeeder = new PublisherSeeder(prismaService);
+  });
 
-    await publisherSeeder.clear();
+  beforeEach(async () => {
     await publisherSeeder.seed();
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await publisherSeeder.clear();
   });
 
@@ -154,6 +154,111 @@ describe('PublisherService', () => {
         },
       });
     });
-    it.todo('should return correct stats based on years');
+    it.each([
+      [
+        undefined,
+        {
+          clickAmount: 2,
+          leadAmount: 4,
+          clickDataSet: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          leadDataSet: [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        },
+      ],
+      [
+        2020,
+        {
+          clickAmount: 1,
+          leadAmount: 3,
+          clickDataSet: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          leadDataSet: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        },
+      ],
+      [
+        2021,
+        {
+          clickAmount: 1,
+          leadAmount: 1,
+          clickDataSet: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          leadDataSet: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        },
+      ],
+    ])('should return correct stats based on years', async (year, amount) => {
+      const res = await prismaService.publisher.create({
+        include: {
+          campaigns: {
+            include: {
+              campaignActions: true,
+            },
+          },
+        },
+        data: {
+          firstName: 'publisher1',
+          lastName: 'publisher1',
+          kvkNumber: '12345678',
+          phoneNumber: '0612345678',
+          email: 'publisher1@publisher.nl',
+          campaigns: {
+            create: {
+              affiliateCode: 'affiliateCode1',
+              campaignActions: {
+                createMany: {
+                  data: [
+                    {
+                      action: ActionType.CLICK,
+                      firedAt: new Date(2020, 0, 1),
+                    },
+                    {
+                      action: ActionType.LEAD,
+                      firedAt: new Date(2020, 0, 2),
+                    },
+                    {
+                      action: ActionType.LEAD,
+                      firedAt: new Date(2020, 0, 2),
+                    },
+                    {
+                      action: ActionType.LEAD,
+                      firedAt: new Date(2020, 11, 31),
+                    },
+                    {
+                      action: ActionType.CLICK,
+                      firedAt: new Date(2021, 0, 1),
+                    },
+                    {
+                      action: ActionType.LEAD,
+                      firedAt: new Date(2021, 0, 2),
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const publisher = await publisherService.getPublisherStats(res.id, {
+        year,
+      });
+
+      expect(publisher).toBeDefined();
+      expect(publisher.stats.length).toBe(2);
+      expect(publisher.clicksAmount).toBe(amount.clickAmount);
+      expect(publisher.leadsAmount).toBe(amount.leadAmount);
+      const clickStats = publisher.stats.find(
+        (stat) => stat.type === ActionType.CLICK,
+      );
+      const leadStats = publisher.stats.find(
+        (stat) => stat.type === ActionType.LEAD,
+      );
+      expect(clickStats).toBeDefined();
+      expect(leadStats).toBeDefined();
+      expect(clickStats.dataset).toEqual(amount.clickDataSet);
+      expect(leadStats.dataset).toEqual(amount.leadDataSet);
+
+      await prismaService.publisher.delete({
+        where: {
+          id: res.id,
+        },
+      });
+    });
   });
 });

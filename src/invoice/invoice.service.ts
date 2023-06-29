@@ -29,12 +29,10 @@ export class InvoiceService {
       },
     });
 
-    const minimumPayoutAmount = await this.configService.get<number>(
-      'invoice.minimumPayout',
-    );
-    const pricePerLead = await this.configService.get<number>(
-      'invoice.pricePerLead',
-    );
+    const minimumPayoutAmount =
+      (await this.configService.get<number>('invoice.minimumPayout')) || 20;
+    const pricePerLead =
+      (await this.configService.get<number>('invoice.pricePerLead')) || 1;
 
     for (let i = 0; i < upcomingInvoices.length; i++) {
       const upcomingInvoice = upcomingInvoices[i];
@@ -63,20 +61,36 @@ export class InvoiceService {
     }
   }
 
-  async getInvoices(options: SearchInvoiceOpts) {
-    options.status = options.status || InvoiceStatus.OPEN;
-    if (options.publisherId) {
+  async getInvoices(options?: SearchInvoiceOpts) {
+    if (options?.publisherId) {
       return this.prismaService.invoice.findMany({
+        include: {
+          invoiceLines: true,
+        },
         where: {
-          status: options.status || undefined,
-          publisherId: options.publisherId,
+          status: options?.status || undefined,
+          publisherId: options?.publisherId,
         },
       });
     }
 
     return this.prismaService.invoice.findMany({
+      include: {
+        invoiceLines: true,
+      },
       where: {
-        status: options.status || undefined,
+        status: options?.status || undefined,
+      },
+    });
+  }
+
+  async getInvoiceById(id: string) {
+    return await this.prismaService.invoice.findUnique({
+      where: {
+        id: id,
+      },
+      include: {
+        invoiceLines: true,
       },
     });
   }
@@ -119,6 +133,27 @@ export class InvoiceService {
       },
       data: {
         amount: invoiceLine.amount + amount,
+      },
+    });
+  }
+
+  async setPaid(invoiceId: string) {
+    const invoice = await this.prismaService.invoice.findUnique({
+      where: {
+        id: invoiceId,
+      },
+    });
+
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    return await this.prismaService.invoice.update({
+      where: {
+        id: invoiceId,
+      },
+      data: {
+        status: InvoiceStatus.PAID,
       },
     });
   }

@@ -88,6 +88,16 @@ export class CampaignService {
     return;
   }
 
+  async getCampaignStats() {
+    const campaigns = await this.prisma.campaign.findMany({
+      include: {
+        campaignActions: true,
+      },
+    });
+
+    //TODO: Implement
+  }
+
   async getCampaignsByUser(userId: string) {
     return this.prisma.campaign.findMany({
       where: {

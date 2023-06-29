@@ -1,5 +1,4 @@
-import { IsIn, IsNumber, IsOptional, Max, Min } from 'class-validator';
-import { UnionToArray, StatType } from 'src/types/types';
+import { IsNumber, IsOptional, Max, Min } from 'class-validator';
 
 export class GetPublisherByIdQuery {
   @IsOptional()
@@ -7,7 +6,4 @@ export class GetPublisherByIdQuery {
   @Min(1900)
   @Max(new Date().getFullYear())
   year: number;
-  @IsOptional()
-  @IsIn(['clicks', 'leads', 'ratio'] as UnionToArray<StatType>)
-  statType: StatType;
 }

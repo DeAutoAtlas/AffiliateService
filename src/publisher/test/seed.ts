@@ -99,6 +99,8 @@ export class PublisherSeeder implements Seeder {
   }
 
   async seed() {
+    await this.clear();
+
     await this.seedPlatforms();
     await this.seedPublishers(100);
     await this.seedCampaigns();
@@ -106,10 +108,15 @@ export class PublisherSeeder implements Seeder {
   }
 
   async clear() {
+    await this.prismaService.invoiceLine.deleteMany();
+    await this.prismaService.invoice.deleteMany();
     await this.prismaService.twoFactorTokens.deleteMany();
     await this.prismaService.campaignAction.deleteMany();
     await this.prismaService.campaign.deleteMany();
     await this.prismaService.platform.deleteMany();
     await this.prismaService.publisher.deleteMany();
+
+    // const publisherCount = await this.prismaService.publisher.count();
+    // console.log('Publisher count after clearing: ', { publisherCount });
   }
 }

@@ -16,7 +16,6 @@ describe('PlatformService', () => {
     service = module.get<PlatformService>(PlatformService);
     prismaService = module.get<PrismaService>(PrismaService);
 
-    await prismaService.platform.deleteMany();
     await prismaService.platform.createMany({
       data: [
         {
