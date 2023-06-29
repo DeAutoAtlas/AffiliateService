@@ -8,6 +8,7 @@ import { PrismaService } from './prisma.service';
 import { PlatformModule } from './platform/platform.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { HealthModule } from './health/health.module';
 import invoiceConfig from 'config/invoice.config';
 
 @Module({
@@ -23,6 +24,7 @@ import invoiceConfig from 'config/invoice.config';
     PlatformModule,
     InvoiceModule,
     ScheduleModule.forRoot(),
+    HealthModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],
