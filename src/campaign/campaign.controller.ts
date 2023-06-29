@@ -1,18 +1,17 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
+  Param,
   Post,
   Query,
   Req,
-  UseGuards,
 } from '@nestjs/common';
+import { ActionType } from '@prisma/client';
+import { AuthWithRole } from 'src/helpers/decorators';
 import { CampaignService } from './campaign.service';
 import { CreateCampaignRequestDto } from './dto/request.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { AuthWithRole } from 'src/helpers/decorators';
-import { ActionType } from '@prisma/client';
 
 @Controller('campaign')
 export class CampaignController {
@@ -34,6 +33,24 @@ export class CampaignController {
   @Get()
   async getCampaigns(@Req() request) {
     return this.campaignService.getCampaignsByUser(request.user.sub);
+  }
+
+  @Get('/:id')
+  @AuthWithRole('admin', 'publisher')
+  async getCampaignById(
+    @Req() req,
+    @Param('id') id: string,
+    @Query('year') year: number,
+  ) {
+    const campaign = await this.campaignService.getCampaignById(id, year);
+    if (
+      req.user.role === 'publisher' &&
+      campaign?.publisherId !== req.user.sub
+    ) {
+      throw new ForbiddenException();
+    }
+
+    return campaign;
   }
 
   @Post('/action')

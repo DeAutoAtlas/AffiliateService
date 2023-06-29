@@ -2,7 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from 'src/prisma.service';
 import { CreateCampaignRequestDto } from './dto/request.dto';
-import { ActionType } from '@prisma/client';
+import { ActionType, Campaign, CampaignAction } from '@prisma/client';
 import { InvoiceService } from 'src/invoice/invoice.service';
 
 @Injectable()
@@ -40,6 +40,66 @@ export class CampaignService {
     });
 
     return campaign.id;
+  }
+
+  async getCampaignById(id: string, statYear?: number) {
+    const campaign = await this.prisma.campaign.findFirst({
+      where: {
+        id,
+      },
+      include: {
+        campaignActions: true,
+      },
+    });
+
+    if (!campaign) {
+      throw new HttpException('Campaign Not Found', 404);
+    }
+
+    const clickAmount = this._getCampaignStat(
+      campaign,
+      ActionType.CLICK,
+      statYear,
+    );
+    const leadAmount = this._getCampaignStat(
+      campaign,
+      ActionType.LEAD,
+      statYear,
+    );
+
+    const stats = [
+      {
+        type: 'CLICK',
+        dataset: this.getMonthlyStats('CLICK', [campaign], statYear),
+      },
+      {
+        type: 'LEAD',
+        dataset: this.getMonthlyStats('LEAD', [campaign], statYear),
+      },
+    ];
+
+    return {
+      ...campaign,
+      clickAmount,
+      leadAmount,
+      stats,
+    };
+  }
+
+  private _getCampaignStat(
+    campaign: Campaign & { campaignActions: CampaignAction[] },
+    actionType: ActionType,
+    statYear?: number,
+  ) {
+    return campaign.campaignActions.reduce((acc, action) => {
+      if (
+        action.action === actionType &&
+        (!statYear || action.firedAt.getFullYear() == statYear)
+      ) {
+        return acc + 1;
+      }
+      return acc;
+    }, 0);
   }
 
   async createCampaignAction(action: ActionType, affiliateId: string) {
@@ -88,14 +148,66 @@ export class CampaignService {
     return;
   }
 
-  async getCampaignStats() {
-    const campaigns = await this.prisma.campaign.findMany({
-      include: {
-        campaignActions: true,
-      },
-    });
+  getMonthlyStats(
+    actionType: ActionType,
+    campaigns: (Campaign & {
+      campaignActions: CampaignAction[];
+    })[],
+    year?: number,
+  ) {
+    const stats: number[] = [];
+    for (let month = 1; month <= 12; month++) {
+      const monthClicks = this.getAllStatsFromCampaigns(actionType, campaigns, {
+        year,
+        month,
+      });
+      stats.push(monthClicks);
+    }
+    return stats;
+  }
 
-    //TODO: Implement
+  getAllStatsFromCampaigns(
+    actionType: ActionType,
+    campaigns: (Campaign & { campaignActions: CampaignAction[] })[],
+    date?: {
+      year?: number;
+      month?: number;
+    },
+  ) {
+    let amount = 0;
+
+    for (const campaign of campaigns) {
+      amount += campaign.campaignActions.filter(
+        this.actionFilter(actionType, date),
+      ).length;
+    }
+
+    return amount;
+  }
+
+  actionFilter(
+    actionType: ActionType,
+    date?: {
+      year?: number;
+      month?: number;
+    },
+  ) {
+    if (!date || (!date.month && !date.year))
+      return (action: CampaignAction) => action.action === actionType;
+    const monthCheck = (action: CampaignAction) =>
+      action.firedAt.getMonth() == date.month - 1;
+    const yearCheck = (action: CampaignAction) =>
+      action.firedAt.getFullYear() == date.year;
+
+    if (date.month && date.year) {
+      return (action: CampaignAction) =>
+        action.action === actionType && monthCheck(action) && yearCheck(action);
+    } else if (date.year) {
+      return (action: CampaignAction) =>
+        action.action === actionType && yearCheck(action);
+    }
+    return (action: CampaignAction) =>
+      action.action === actionType && monthCheck(action);
   }
 
   async getCampaignsByUser(userId: string) {
