@@ -23,7 +23,7 @@ describe('PublisherService', () => {
 
   afterAll(async () => {
     await publisherSeeder.clear();
-  });
+  }, 40000);
 
   describe('findAll', () => {
     it('should return all publishers', async () => {
