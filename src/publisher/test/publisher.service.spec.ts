@@ -1,5 +1,8 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { ActionType } from '@prisma/client';
+import { CampaignService } from 'src/campaign/campaign.service';
+import { InvoiceService } from 'src/invoice/invoice.service';
 import { PrismaService } from 'src/prisma.service';
 import { Seeder } from 'src/types/types';
 import PublisherService from '../publisher.service';
@@ -12,7 +15,13 @@ describe('PublisherService', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [PublisherService, PrismaService],
+      imports: [ConfigModule],
+      providers: [
+        PublisherService,
+        PrismaService,
+        CampaignService,
+        InvoiceService,
+      ],
     }).compile();
 
     publisherService = moduleRef.get<PublisherService>(PublisherService);

@@ -8,5 +8,6 @@ import { InvoiceModule } from 'src/invoice/invoice.module';
   providers: [CampaignService],
   controllers: [CampaignController],
   imports: [PrismaModule, InvoiceModule],
+  exports: [CampaignService],
 })
 export class CampaignModule {}

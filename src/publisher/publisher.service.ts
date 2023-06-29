@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { ActionType, Campaign, CampaignAction } from '@prisma/client';
+import { ActionType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { CampaignService } from 'src/campaign/campaign.service';
 import { PrismaService } from 'src/prisma.service';
 import {
   CampaignStats,
@@ -12,7 +13,10 @@ import { InvitePublisherOpts } from './dto/request/InvitePublisher.dto';
 
 @Injectable()
 export default class PublisherService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private campaignService: CampaignService,
+  ) {}
 
   async getPublishers(opts: GetPublisherOpts): Promise<SmallPublisherDto[]> {
     const publishers = await this.prisma.publisher.findMany({
@@ -28,11 +32,11 @@ export default class PublisherService {
     });
 
     return publishers.map((publisher) => {
-      const clicksAmount = this.getAllStatsFromCampaigns(
+      const clicksAmount = this.campaignService.getAllStatsFromCampaigns(
         'CLICK',
         publisher.campaigns,
       );
-      const leadsAmount = this.getAllStatsFromCampaigns(
+      const leadsAmount = this.campaignService.getAllStatsFromCampaigns(
         'LEAD',
         publisher.campaigns,
       );
@@ -100,14 +104,14 @@ export default class PublisherService {
       fullPublisher = publisher;
     }
 
-    const clicksAmount = this.getAllStatsFromCampaigns(
+    const clicksAmount = this.campaignService.getAllStatsFromCampaigns(
       'CLICK',
       fullPublisher.campaigns,
       {
         year: opts.year,
       },
     );
-    const leadsAmount = this.getAllStatsFromCampaigns(
+    const leadsAmount = this.campaignService.getAllStatsFromCampaigns(
       'LEAD',
       fullPublisher.campaigns,
       {
@@ -124,7 +128,7 @@ export default class PublisherService {
       stats: [
         {
           type: 'CLICK',
-          dataset: this.getMonthlyStats(
+          dataset: this.campaignService.getMonthlyStats(
             'CLICK',
             fullPublisher.campaigns,
             opts.year,
@@ -132,7 +136,7 @@ export default class PublisherService {
         },
         {
           type: 'LEAD',
-          dataset: this.getMonthlyStats(
+          dataset: this.campaignService.getMonthlyStats(
             'LEAD',
             fullPublisher.campaigns,
             opts.year,
@@ -186,68 +190,6 @@ export default class PublisherService {
       opts.email,
       ' that he is invited',
     );
-  }
-
-  getMonthlyStats(
-    actionType: ActionType,
-    campaigns: (Campaign & {
-      campaignActions: CampaignAction[];
-    })[],
-    year?: number,
-  ) {
-    const stats: number[] = [];
-    for (let month = 1; month <= 12; month++) {
-      const monthClicks = this.getAllStatsFromCampaigns(actionType, campaigns, {
-        year,
-        month,
-      });
-      stats.push(monthClicks);
-    }
-    return stats;
-  }
-
-  getAllStatsFromCampaigns(
-    actionType: ActionType,
-    campaigns: (Campaign & { campaignActions: CampaignAction[] })[],
-    date?: {
-      year?: number;
-      month?: number;
-    },
-  ) {
-    let amount = 0;
-
-    for (const campaign of campaigns) {
-      amount += campaign.campaignActions.filter(
-        this.actionFilter(actionType, date),
-      ).length;
-    }
-
-    return amount;
-  }
-
-  actionFilter(
-    actionType: ActionType,
-    date?: {
-      year?: number;
-      month?: number;
-    },
-  ) {
-    if (!date || (!date.month && !date.year))
-      return (action: CampaignAction) => action.action === actionType;
-    const monthCheck = (action: CampaignAction) =>
-      action.firedAt.getMonth() === date.month - 1;
-    const yearCheck = (action: CampaignAction) =>
-      action.firedAt.getFullYear() === date.year;
-
-    if (date.month && date.year) {
-      return (action: CampaignAction) =>
-        action.action === actionType && monthCheck(action) && yearCheck(action);
-    } else if (date.year) {
-      return (action: CampaignAction) =>
-        action.action === actionType && yearCheck(action);
-    }
-    return (action: CampaignAction) =>
-      action.action === actionType && monthCheck(action);
   }
 }
 
