@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { InvoiceService } from '../invoice.service';
-import { PrismaService } from 'src/prisma.service';
 import { ConfigModule } from '@nestjs/config';
+import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from 'src/prisma.service';
+import { InvoiceService } from '../invoice.service';
 
 const createPublishers = async (prismaService: PrismaService) => {
   return await prismaService.$transaction([
